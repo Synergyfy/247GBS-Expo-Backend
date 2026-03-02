@@ -17,6 +17,68 @@ let RedemptionService = class RedemptionService {
     constructor(prisma) {
         this.prisma = prisma;
     }
+    async getStats(userId) {
+        const booth = await this.prisma.booth.findUnique({
+            where: { ownerId: userId },
+            include: {
+                products: true
+            }
+        });
+        if (!booth) {
+            throw new common_1.ForbiddenException('You do not have a booth.');
+        }
+        const totalRedeemed = await this.prisma.order.count({
+            where: {
+                boothId: booth.id,
+                status: 'PICKED_UP'
+            }
+        });
+        const totalPending = await this.prisma.order.count({
+            where: {
+                boothId: booth.id,
+                status: { in: ['PENDING', 'READY'] }
+            }
+        });
+        return {
+            redeemed: totalRedeemed,
+            total: totalRedeemed + totalPending,
+            queueTime: "~2m",
+            activeStaff: 1
+        };
+    }
+    async getHistory(userId) {
+        const booth = await this.prisma.booth.findUnique({
+            where: { ownerId: userId },
+        });
+        if (!booth) {
+            throw new common_1.ForbiddenException('You do not have a booth.');
+        }
+        return this.prisma.order.findMany({
+            where: {
+                boothId: booth.id,
+                status: 'PICKED_UP'
+            },
+            include: {
+                user: {
+                    select: {
+                        name: true,
+                        email: true
+                    }
+                },
+                items: {
+                    include: {
+                        product: {
+                            select: {
+                                name: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: { updatedAt: 'desc' },
+            take: 10
+        });
+    }
     async findOrdersByVisitor(userId, identifier) {
         const booth = await this.prisma.booth.findUnique({
             where: { ownerId: userId },

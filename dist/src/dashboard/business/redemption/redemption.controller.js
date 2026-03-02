@@ -22,6 +22,12 @@ let RedemptionController = class RedemptionController {
     constructor(redemptionService) {
         this.redemptionService = redemptionService;
     }
+    getStats(userId) {
+        return this.redemptionService.getStats(userId);
+    }
+    getHistory(userId) {
+        return this.redemptionService.getHistory(userId);
+    }
     findOrdersByVisitor(userId, identifier) {
         return this.redemptionService.findOrdersByVisitor(userId, identifier);
     }
@@ -30,6 +36,20 @@ let RedemptionController = class RedemptionController {
     }
 };
 exports.RedemptionController = RedemptionController;
+__decorate([
+    (0, common_1.Get)('stats'),
+    __param(0, (0, get_user_decorator_1.GetUser)('userId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], RedemptionController.prototype, "getStats", null);
+__decorate([
+    (0, common_1.Get)('history'),
+    __param(0, (0, get_user_decorator_1.GetUser)('userId')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String]),
+    __metadata("design:returntype", void 0)
+], RedemptionController.prototype, "getHistory", null);
 __decorate([
     (0, common_1.Get)('visitor/:identifier'),
     __param(0, (0, get_user_decorator_1.GetUser)('userId')),

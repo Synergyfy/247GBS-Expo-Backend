@@ -123,6 +123,7 @@ let RewardsService = class RewardsService {
             }
             const progress = c._count.rewardAllocations > 0 ? Math.min(Math.round((c._count.rewardAllocations / 100) * 100), 100) : 0;
             return {
+                id: c.id,
                 name: c.name,
                 type: c.type === 'REWARD' ? 'Bulk Reward' : 'Referral',
                 status,
@@ -183,7 +184,7 @@ let RewardsService = class RewardsService {
                 name: "CRM Platforms",
                 desc: "Sync attendee data and reward history with Salesforce, HubSpot, or Zoho.",
                 type: "CRM",
-                isComingSoon: true,
+                isComingSoon: false,
                 icon: 'Database',
                 color: "text-purple-600",
                 bg: "bg-purple-50"
@@ -194,8 +195,34 @@ let RewardsService = class RewardsService {
             return {
                 ...s,
                 status: connected ? connected.status : (s.isComingSoon ? "Coming Soon" : "Disconnected"),
-                id: connected?.id || s.id
+                id: connected?.id || s.id,
+                config: connected?.config || {}
             };
+        });
+    }
+    async connectIntegration(userId, eventId, dto) {
+        const booth = await this.getBoothForUser(userId);
+        return this.prisma.loyaltyIntegration.upsert({
+            where: {
+                boothId_eventId_name: {
+                    boothId: booth.id,
+                    eventId,
+                    name: dto.name
+                }
+            },
+            update: {
+                status: 'Connected',
+                type: dto.type,
+                config: dto.config || {}
+            },
+            create: {
+                boothId: booth.id,
+                eventId,
+                name: dto.name,
+                type: dto.type,
+                status: 'Connected',
+                config: dto.config || {}
+            }
         });
     }
     async getMonitoringStats(userId, eventId) {

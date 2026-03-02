@@ -30,7 +30,6 @@ export class RewardsService {
             where: { boothId: booth.id, eventId, status: 'CLAIMED' }
         });
 
-        // Reach could be estimated by total unique emails allocated to
         const reach = await this.prisma.rewardAllocation.groupBy({
             by: ['email'],
             where: { boothId: booth.id, eventId },
@@ -63,8 +62,6 @@ export class RewardsService {
                 }
             });
 
-            // Create a transaction record in the wallet/transaction system if needed
-            // For now, we'll just return the updated balance
             return balance;
         });
     }
@@ -81,7 +78,6 @@ export class RewardsService {
                 throw new BadRequestException(`Insufficient bulk ticket balance. Available: ${balance?.balance || 0}`);
             }
 
-            // Decrement balance
             await tx.rewardBalance.update({
                 where: { id: balance.id },
                 data: {
@@ -90,7 +86,6 @@ export class RewardsService {
                 }
             });
 
-            // Create allocations
             const allocations = await Promise.all(dto.emails.map(email =>
                 tx.rewardAllocation.create({
                     data: {
@@ -136,10 +131,10 @@ export class RewardsService {
                 status = 'Ended';
             }
 
-            // Estimate progress (this is mock-ish since progress depends on goal)
             const progress = c._count.rewardAllocations > 0 ? Math.min(Math.round((c._count.rewardAllocations / 100) * 100), 100) : 0;
 
             return {
+                id: c.id,
                 name: c.name,
                 type: c.type === 'REWARD' ? 'Bulk Reward' : 'Referral',
                 status,
@@ -162,7 +157,6 @@ export class RewardsService {
             }
         });
 
-        // Ensure native integration exists
         let nativeReward = integrations.find(i => i.type === 'NATIVE');
         if (!nativeReward) {
             nativeReward = await this.prisma.loyaltyIntegration.create({
@@ -182,7 +176,7 @@ export class RewardsService {
         return {
             syncActive: true,
             lastSyncTime: lastSync?.lastSync || new Date(),
-            syncedProfiles: lastSync?.syncedProfiles || 12402, // Default mock value if none exists
+            syncedProfiles: lastSync?.syncedProfiles || 12402,
             apiStatus: lastSync?.apiStatus || 'Healthy'
         };
     }
@@ -209,7 +203,7 @@ export class RewardsService {
                 name: "CRM Platforms",
                 desc: "Sync attendee data and reward history with Salesforce, HubSpot, or Zoho.",
                 type: "CRM",
-                isComingSoon: true,
+                isComingSoon: false,
                 icon: 'Database',
                 color: "text-purple-600",
                 bg: "bg-purple-50"
@@ -221,8 +215,36 @@ export class RewardsService {
             return {
                 ...s,
                 status: connected ? connected.status : (s.isComingSoon ? "Coming Soon" : "Disconnected"),
-                id: connected?.id || s.id
+                id: connected?.id || s.id,
+                config: connected?.config || {}
             };
+        });
+    }
+
+    async connectIntegration(userId: string, eventId: string, dto: any) {
+        const booth = await this.getBoothForUser(userId);
+
+        return this.prisma.loyaltyIntegration.upsert({
+            where: {
+                boothId_eventId_name: {
+                    boothId: booth.id,
+                    eventId,
+                    name: dto.name
+                }
+            },
+            update: {
+                status: 'Connected',
+                type: dto.type,
+                config: dto.config || {}
+            },
+            create: {
+                boothId: booth.id,
+                eventId,
+                name: dto.name,
+                type: dto.type,
+                status: 'Connected',
+                config: dto.config || {}
+            }
         });
     }
 
@@ -278,13 +300,12 @@ export class RewardsService {
     async getAbuseAlerts(userId: string, eventId: string) {
         const booth = await this.getBoothForUser(userId);
 
-        // Refined abuse detection: multiple redemptions from same IP in 5 minute window
         const recentAllocations = await this.prisma.rewardAllocation.groupBy({
             by: ['ipAddress'],
             where: {
                 boothId: booth.id,
                 eventId,
-                createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) }, // Last 5 mins
+                createdAt: { gte: new Date(Date.now() - 5 * 60 * 1000) },
                 ipAddress: { not: null }
             },
             _count: true,

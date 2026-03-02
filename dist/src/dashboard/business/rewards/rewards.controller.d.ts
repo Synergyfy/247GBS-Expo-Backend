@@ -11,11 +11,11 @@ export declare class RewardsController {
         reach: number;
     }>;
     purchaseBundle(userId: string, eventId: string, dto: PurchaseBundleDto): Promise<{
+        boothId: string;
+        eventId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        boothId: string;
-        eventId: string;
         balance: number;
         totalPurchased: number;
         totalAllocated: number;
@@ -26,6 +26,7 @@ export declare class RewardsController {
         remainingBalance: number;
     }>;
     getRewardCampaigns(userId: string, eventId: string): Promise<{
+        id: string;
         name: string;
         type: string;
         status: string;

@@ -217,11 +217,16 @@ export class DashboardEventService {
 
     async createSession(userId: string, eventId: string, data: any) {
         await this.findMyEventById(userId, eventId);
+
+        // Strip empty speakerId — an empty string is not a valid FK reference
+        const { speakerId, ...rest } = data;
+        const sessionData: any = { ...rest, eventId };
+        if (speakerId && speakerId.trim() !== '') {
+            sessionData.speakerId = speakerId;
+        }
+
         return this.prisma.session.create({
-            data: {
-                ...data,
-                eventId,
-            },
+            data: sessionData,
             include: { speaker: true },
         });
     }
@@ -334,7 +339,7 @@ export class DashboardEventService {
             where: { ownerId: userId },
             include: {
                 products: {
-                    where: { status: 'PUBLISHED' as any },
+                    where: { status: 'ACTIVE' as any },
                 },
             },
         });
@@ -395,5 +400,5 @@ export class DashboardEventService {
         });
     }
     // ============ TICKET TIERS ============
-   
+
 }

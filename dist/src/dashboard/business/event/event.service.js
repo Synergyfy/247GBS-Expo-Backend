@@ -201,11 +201,13 @@ let DashboardEventService = class DashboardEventService {
     }
     async createSession(userId, eventId, data) {
         await this.findMyEventById(userId, eventId);
+        const { speakerId, ...rest } = data;
+        const sessionData = { ...rest, eventId };
+        if (speakerId && speakerId.trim() !== '') {
+            sessionData.speakerId = speakerId;
+        }
         return this.prisma.session.create({
-            data: {
-                ...data,
-                eventId,
-            },
+            data: sessionData,
             include: { speaker: true },
         });
     }
@@ -296,7 +298,7 @@ let DashboardEventService = class DashboardEventService {
             where: { ownerId: userId },
             include: {
                 products: {
-                    where: { status: 'PUBLISHED' },
+                    where: { status: 'ACTIVE' },
                 },
             },
         });

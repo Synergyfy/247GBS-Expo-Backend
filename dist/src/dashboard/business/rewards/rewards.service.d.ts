@@ -12,11 +12,11 @@ export declare class RewardsService {
         reach: number;
     }>;
     purchaseBundle(userId: string, eventId: string, dto: PurchaseBundleDto): Promise<{
+        boothId: string;
+        eventId: string;
         id: string;
         createdAt: Date;
         updatedAt: Date;
-        boothId: string;
-        eventId: string;
         balance: number;
         totalPurchased: number;
         totalAllocated: number;
@@ -27,6 +27,7 @@ export declare class RewardsService {
         remainingBalance: number;
     }>;
     getRewardCampaigns(userId: string, eventId: string): Promise<{
+        id: string;
         name: string;
         type: string;
         status: string;
@@ -42,6 +43,7 @@ export declare class RewardsService {
     listIntegrations(userId: string, eventId: string): Promise<({
         status: string;
         id: string;
+        config: string | number | true | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray;
         name: string;
         desc: string;
         type: string;
@@ -52,6 +54,7 @@ export declare class RewardsService {
     } | {
         status: string;
         id: string;
+        config: string | number | true | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray;
         name: string;
         desc: string;
         type: string;
@@ -60,6 +63,17 @@ export declare class RewardsService {
         color: string;
         bg: string;
     })[]>;
+    connectIntegration(userId: string, eventId: string, dto: any): Promise<{
+        boothId: string;
+        eventId: string;
+        status: string;
+        id: string;
+        name: string;
+        createdAt: Date;
+        updatedAt: Date;
+        type: string;
+        config: import("@prisma/client/runtime/library").JsonValue | null;
+    }>;
     getMonitoringStats(userId: string, eventId: string): Promise<{
         issued: number;
         redeemed: number;
@@ -81,9 +95,9 @@ export declare class RewardsService {
         count: number;
     }[]>;
     blockIP(userId: string, ip: string, reason?: string): Promise<{
+        boothId: string;
         id: string;
         createdAt: Date;
-        boothId: string;
         ip: string;
         reason: string | null;
     }>;

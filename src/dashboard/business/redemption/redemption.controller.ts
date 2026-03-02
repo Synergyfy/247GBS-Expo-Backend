@@ -8,6 +8,16 @@ import { GetUser } from '../../../auth/get-user.decorator';
 export class RedemptionController {
     constructor(private readonly redemptionService: RedemptionService) { }
 
+    @Get('stats')
+    getStats(@GetUser('userId') userId: string) {
+        return this.redemptionService.getStats(userId);
+    }
+
+    @Get('history')
+    getHistory(@GetUser('userId') userId: string) {
+        return this.redemptionService.getHistory(userId);
+    }
+
     @Get('visitor/:identifier')
     findOrdersByVisitor(@GetUser('userId') userId: string, @Param('identifier') identifier: string) {
         return this.redemptionService.findOrdersByVisitor(userId, identifier);

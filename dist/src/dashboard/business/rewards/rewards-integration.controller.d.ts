@@ -11,6 +11,7 @@ export declare class RewardsIntegrationController {
     listIntegrations(userId: string, eventId: string): Promise<({
         status: string;
         id: string;
+        config: string | number | true | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray;
         name: string;
         desc: string;
         type: string;
@@ -21,6 +22,7 @@ export declare class RewardsIntegrationController {
     } | {
         status: string;
         id: string;
+        config: string | number | true | import("@prisma/client/runtime/library").JsonObject | import("@prisma/client/runtime/library").JsonArray;
         name: string;
         desc: string;
         type: string;
@@ -29,4 +31,15 @@ export declare class RewardsIntegrationController {
         color: string;
         bg: string;
     })[]>;
+    connectIntegration(userId: string, eventId: string, dto: any): Promise<{
+        boothId: string;
+        eventId: string;
+        status: string;
+        id: string;
+        name: string;
+        createdAt: Date;
+        updatedAt: Date;
+        type: string;
+        config: import("@prisma/client/runtime/library").JsonValue | null;
+    }>;
 }

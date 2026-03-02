@@ -28,6 +28,9 @@ let RewardsIntegrationController = class RewardsIntegrationController {
     listIntegrations(userId, eventId) {
         return this.rewardsService.listIntegrations(userId, eventId);
     }
+    connectIntegration(userId, eventId, dto) {
+        return this.rewardsService.connectIntegration(userId, eventId, dto);
+    }
 };
 exports.RewardsIntegrationController = RewardsIntegrationController;
 __decorate([
@@ -46,6 +49,15 @@ __decorate([
     __metadata("design:paramtypes", [String, String]),
     __metadata("design:returntype", void 0)
 ], RewardsIntegrationController.prototype, "listIntegrations", null);
+__decorate([
+    (0, common_1.Post)('connect'),
+    __param(0, (0, get_user_decorator_1.GetUser)('userId')),
+    __param(1, (0, common_1.Query)('eventId')),
+    __param(2, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", void 0)
+], RewardsIntegrationController.prototype, "connectIntegration", null);
 exports.RewardsIntegrationController = RewardsIntegrationController = __decorate([
     (0, common_1.Controller)('dashboard/business/rewards/integrations'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

@@ -23,9 +23,9 @@ export declare class RewardsMonitoringController {
         count: number;
     }[]>;
     blockIP(userId: string, ipAddress: string, reason?: string): Promise<{
+        boothId: string;
         id: string;
         createdAt: Date;
-        boothId: string;
         ip: string;
         reason: string | null;
     }>;

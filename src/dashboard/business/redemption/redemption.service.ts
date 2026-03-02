@@ -5,6 +5,76 @@ import { PrismaService } from '../../../prisma/prisma.service';
 export class RedemptionService {
     constructor(private prisma: PrismaService) { }
 
+    async getStats(userId: string) {
+        const booth = await this.prisma.booth.findUnique({
+            where: { ownerId: userId },
+            include: {
+                products: true
+            }
+        });
+
+        if (!booth) {
+            throw new ForbiddenException('You do not have a booth.');
+        }
+
+        const totalRedeemed = await this.prisma.order.count({
+            where: {
+                boothId: booth.id,
+                status: 'PICKED_UP'
+            }
+        });
+
+        const totalPending = await this.prisma.order.count({
+            where: {
+                boothId: booth.id,
+                status: { in: ['PENDING', 'READY'] }
+            }
+        });
+
+        return {
+            redeemed: totalRedeemed,
+            total: totalRedeemed + totalPending,
+            queueTime: "~2m", // This could be calculated from average diff between created and picked_up
+            activeStaff: 1 // Placeholder for now, could be derived from active sessions
+        };
+    }
+
+    async getHistory(userId: string) {
+        const booth = await this.prisma.booth.findUnique({
+            where: { ownerId: userId },
+        });
+
+        if (!booth) {
+            throw new ForbiddenException('You do not have a booth.');
+        }
+
+        return this.prisma.order.findMany({
+            where: {
+                boothId: booth.id,
+                status: 'PICKED_UP'
+            },
+            include: {
+                user: {
+                    select: {
+                        name: true,
+                        email: true
+                    }
+                },
+                items: {
+                    include: {
+                        product: {
+                            select: {
+                                name: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: { updatedAt: 'desc' },
+            take: 10
+        });
+    }
+
     async findOrdersByVisitor(userId: string, identifier: string) {
         const booth = await this.prisma.booth.findUnique({
             where: { ownerId: userId },
