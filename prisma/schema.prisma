@@ -1,0 +1,666 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  BUSINESS
+  CUSTOMER
+}
+
+enum EventStatus {
+  DRAFT 
+  PUBLISHED
+  COMPLETED
+}
+
+enum OrderStatus {
+  PENDING
+  READY
+  PICKED_UP
+  SHIPPED
+  CANCELLED
+}
+
+enum FulfilmentType {
+  PICKUP
+  DELIVERY
+}
+
+enum ExceptionType {
+  DELAY
+  OUT_OF_STOCK
+}
+
+enum ProductCategory {
+  ELECTRONICS
+  FASHION
+  HOME_GARDEN
+  SOFTWARE
+  SERVICES
+  OTHER
+}
+
+enum ProductStatus {
+  ACTIVE
+  DRAFT
+  OUT_OF_STOCK
+  HIDDEN
+}
+
+enum SalesChannel {
+  MARKETPLACE
+  POS
+  AGENT
+  REFERRAL
+  CAMPAIGN
+}
+
+enum SalesAssetType {
+  LINK
+  QR
+  AGENT
+  CAMPAIGN
+}
+
+enum CampaignType {
+  PROMO
+  FLASH
+  BUNDLE
+  GEO
+  REWARD
+  REFERRAL
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED
+  BOGO
+}
+
+
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  password      String
+  name          String?
+  role          Role      @default(CUSTOMER)
+  qrCode        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Profile extensions
+  booth         Booth?
+  wallet        Wallet?
+  
+  // Network/Referrals
+  referredBy    User?     @relation("UserReferrals", fields: [referrerId], references: [id])
+  referrerId    String?
+  referrals     User[]    @relation("UserReferrals")
+
+  // Tickets
+  tickets       Ticket[]
+  events        Event[]   @relation("UserEvents")
+  appointments  Appointment[]
+  orders        Order[]
+  messageThreads MessageThread[]
+  sentMessages   Message[]
+}
+
+model Booth {
+  id            String    @id @default(cuid())
+  name          String
+  logo          String?
+  banner        String?
+  description   String?
+  owner         User      @relation(fields: [ownerId], references: [id])
+  ownerId       String    @unique
+  phoneNumber   String?
+  email         String?
+  website       String?
+  location      String?
+  category      String?
+  contactName   String?
+  contactTitle  String?
+  publicEmail   String?
+  phoneDisplay  String?
+  tagline         String?
+  settlementRule  String    @default("T+3")
+  autoPayout      Boolean   @default(true)
+  products        Product[]
+  orders        Order[]
+  fulfilmentPoints FulfilmentPoint[]
+  fulfilmentSlots  FulfilmentSlot[]
+  exceptions    LogisticsException[]
+  appointments  Appointment[]
+  rewardBalances RewardBalance[]
+  rewardAllocations RewardAllocation[]
+  loyaltyIntegrations LoyaltyIntegration[]
+  blockedIPs         BlockedIP[]
+  scanners           Scanner[]
+  staff              EventStaff[]
+  financeTickets     FinanceTicket[]
+  messageThreads     MessageThread[]
+  supportChats       SupportChatSession[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Product {
+  id            String    @id @default(cuid())
+  name          String
+  description   String?
+  price         Decimal
+  image         String?
+  category      ProductCategory @default(OTHER)
+  sku           String?
+  stock         Int       @default(0)
+  status        ProductStatus @default(DRAFT)
+  substituteId  String?
+  substitute    Product?      @relation("ProductSubstitution", fields: [substituteId], references: [id])
+  substitutedBy Product[]     @relation("ProductSubstitution")
+  orderItems    OrderItem[]
+  bundledInTiers TicketTierProduct[]
+  eventProducts EventProduct[]
+  booth         Booth     @relation(fields: [boothId], references: [id])
+  boothId       String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Wallet {
+  id            String        @id @default(cuid())
+  user          User          @relation(fields: [userId], references: [id])
+  userId        String        @unique
+  points        Decimal       @default(0)
+  cash          Decimal       @default(0)
+  vouchers      Decimal       @default(0)
+  credits       Decimal       @default(0)
+  transactions  Transaction[]
+  updatedAt     DateTime      @updatedAt
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  wallet      Wallet   @relation(fields: [walletId], references: [id])
+  walletId    String
+  amount      Decimal
+  type        String   // EARNING, SPENDING, REFUND, etc.
+  status      String   @default("COMPLETED") // PENDING, COMPLETED, DISPUTED, FAILED
+  description String?
+  createdAt   DateTime @default(now())
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  startDate   DateTime
+  endDate     DateTime
+  location    String?
+  category    String
+  type        String
+  organizer   String
+  fullImage   String?
+  videoUrl    String?
+  benefits    String[]
+  rating      Decimal? @default(0)
+  reviews     Int?     @default(0)
+  status      EventStatus @default(DRAFT)
+  price       Decimal  @default(0)
+  capacity    Int      @default(100)
+  format      String?  // VIRTUAL, PHYSICAL, HYBRID
+  boothLayout Json?    // 3D editor configuration
+  scanners    Scanner[]
+  staff       EventStaff[]
+  owner       User?    @relation("UserEvents", fields: [ownerId], references: [id])
+  ownerId     String?
+  
+  tickets     Ticket[]
+  ticketTiers TicketTier[]
+  sessions    Session[]
+  speakers    Speaker[]
+  eventProducts EventProduct[]
+  salesAssets   SalesAsset[]
+  campaigns     MarketingCampaign[]
+  visits        ChannelVisit[]
+  channelConfigs SalesChannelConfig[]
+  orders          Order[]
+  rewardBalances  RewardBalance[]
+  rewardAllocations RewardAllocation[]
+  loyaltyIntegrations LoyaltyIntegration[]
+  createdAt       DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  title     String
+  time      String
+  hall      String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId   String
+  speaker   Speaker? @relation(fields: [speakerId], references: [id])
+  speakerId String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Speaker {
+  id        String    @id @default(cuid())
+  name      String
+  role      String
+  topic     String?
+  event     Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId   String
+  sessions  Session[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model EventProduct {
+  id        String   @id @default(cuid())
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  eventId   String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  createdAt DateTime @default(now())
+
+  @@unique([eventId, productId])
+}
+
+enum TicketType {
+  GENERAL
+  VIP
+  BUNDLE
+  SUBSCRIPTION
+  REWARD
+}
+
+model TicketTier {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  price       Decimal
+  quantity    Int
+  type        String   @default("general") // Stored as string to allow flexibility, but mapped to TicketType in code
+  saleStart   DateTime?
+  saleEnd     DateTime?
+  transferable Boolean @default(true)
+  refundable   Boolean @default(true)
+  rules       String?
+  accessZones String[]
+  status      String    @default("Active")
+  stockTracking Boolean   @default(true)
+  autoLock    Boolean   @default(true)
+  waitlist    Boolean   @default(false)
+  event       Event    @relation(fields: [eventId], references: [id])
+  eventId     String
+  tickets         Ticket[]
+  bundledProducts TicketTierProduct[]
+  salesAssets     SalesAsset[]
+  campaigns       MarketingCampaign[] @relation("CampaignTargetTier")
+  createdAt       DateTime            @default(now())
+}
+
+model TicketTierProduct {
+  id            String     @id @default(cuid())
+  ticketTier    TicketTier @relation(fields: [ticketTierId], references: [id])
+  ticketTierId  String
+  product       Product    @relation(fields: [productId], references: [id])
+  productId     String
+  createdAt     DateTime   @default(now())
+
+  @@unique([ticketTierId, productId])
+}
+
+model Ticket {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  event       Event    @relation(fields: [eventId], references: [id])
+  eventId     String
+  tier        TicketTier? @relation(fields: [tierId], references: [id])
+  tierId      String?
+  type        String   // GENERAL, BUSINESS
+  price       Decimal
+  scanned     Boolean @default(false)
+  scannedAt   DateTime?
+  
+  channel       SalesChannel @default(MARKETPLACE)
+  campaign      MarketingCampaign? @relation(fields: [campaignId], references: [id])
+  campaignId    String?
+  salesAsset    SalesAsset?        @relation(fields: [salesAssetId], references: [id])
+  salesAssetId  String?
+  rewardAllocation RewardAllocation?
+  
+  createdAt   DateTime @default(now())
+}
+
+model Appointment {
+  id          String   @id @default(cuid())
+  user        User     @relation(fields: [userId], references: [id])
+  userId      String
+  booth       Booth    @relation(fields: [boothId], references: [id])
+  boothId     String
+  startTime   DateTime
+  endTime     DateTime
+  status      String   @default("PENDING") // PENDING, ACCEPTED, REJECTED, COMPLETED
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Order {
+  id                String         @id @default(cuid())
+  user              User           @relation(fields: [userId], references: [id])
+  userId            String
+  booth             Booth          @relation(fields: [boothId], references: [id])
+  boothId           String
+  items             OrderItem[]
+  status            OrderStatus    @default(PENDING)
+  type              FulfilmentType @default(PICKUP)
+  fulfilmentSlotId  String?
+  fulfilmentPointId String?
+  totalAmount       Decimal
+
+  event             Event          @relation(fields: [eventId], references: [id])
+  eventId           String
+
+  channel       SalesChannel @default(MARKETPLACE)
+  campaign      MarketingCampaign? @relation(fields: [campaignId], references: [id])
+  campaignId    String?
+  salesAsset    SalesAsset?        @relation(fields: [salesAssetId], references: [id])
+  salesAssetId  String?
+
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  order     Order   @relation(fields: [orderId], references: [id])
+  orderId   String
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int     @default(1)
+  price     Decimal
+}
+
+model FulfilmentPoint {
+  id        String  @id @default(cuid())
+  booth     Booth   @relation(fields: [boothId], references: [id])
+  boothId   String
+  name      String
+  location  String?
+  active    Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model FulfilmentSlot {
+  id        String   @id @default(cuid())
+  booth     Booth    @relation(fields: [boothId], references: [id])
+  boothId   String
+  name      String
+  startTime DateTime
+  endTime   DateTime
+  capacity  Int      @default(20)
+  booked    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model LogisticsException {
+  id        String        @id @default(cuid())
+  booth     Booth         @relation(fields: [boothId], references: [id])
+  boothId   String
+  type      ExceptionType
+  message   String
+  resolved  Boolean       @default(false)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+}
+
+model MarketingCampaign {
+  id            String       @id @default(cuid())
+  name          String
+  description   String?
+  type          CampaignType @default(PROMO)
+  discountType  DiscountType @default(PERCENTAGE)
+  discountValue Decimal      @default(0)
+  code          String?      @unique
+  location      String?      // For geo-targeting
+  startDate     DateTime
+  endDate       DateTime
+  
+  event         Event        @relation(fields: [eventId], references: [id])
+  eventId       String
+  
+  targetTier    TicketTier?  @relation("CampaignTargetTier", fields: [targetTierId], references: [id])
+  targetTierId  String?
+  
+  orders            Order[]
+  tickets           Ticket[]
+  rewardAllocations RewardAllocation[]
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+}
+
+model SalesAsset {
+  id          String         @id @default(cuid())
+  name        String?        // Internal Label
+  type        SalesAssetType @default(LINK)
+  code        String         @unique
+  description String?
+  hits        Int            @default(0)
+  
+  event       Event          @relation(fields: [eventId], references: [id])
+  eventId     String
+  
+  tier        TicketTier?    @relation(fields: [tierId], references: [id])
+  tierId      String?
+  
+  orders      Order[]
+  tickets     Ticket[]
+  
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+}
+
+model ChannelVisit {
+  id          String   @id @default(cuid())
+  channel     SalesChannel
+  event       Event    @relation(fields: [eventId], references: [id])
+  eventId     String
+  ip          String?
+  userAgent   String?
+  deviceType  String?  // mobile, desktop, tablet
+  createdAt   DateTime @default(now())
+}
+
+model SalesChannelConfig {
+  id          String   @id @default(cuid())
+  channel     SalesChannel
+  status      String   @default("Setup Required") // Active, Setup Required, Inactive
+  config      Json?    // Store channel specific settings
+  event       Event    @relation(fields: [eventId], references: [id])
+  eventId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([eventId, channel])
+}
+
+model RewardBalance {
+  id              String   @id @default(cuid())
+  booth           Booth    @relation(fields: [boothId], references: [id])
+  boothId         String
+  event           Event    @relation(fields: [eventId], references: [id])
+  eventId         String
+  balance         Int      @default(0) // Total tickets available to reward
+  totalPurchased  Int      @default(0)
+  totalAllocated  Int      @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([boothId, eventId])
+}
+
+model RewardAllocation {
+  id            String             @id @default(cuid())
+  campaign      MarketingCampaign? @relation(fields: [campaignId], references: [id])
+  campaignId    String?
+  email         String             // Recipient
+  status        String             @default("PENDING") // PENDING, CLAIMED, EXPIRED, FLAGGED
+  ipAddress     String?            // Tracked for abuse detection
+  ticket        Ticket?            @relation(fields: [ticketId], references: [id])
+  ticketId      String?            @unique
+  booth         Booth              @relation(fields: [boothId], references: [id])
+  boothId       String
+  event         Event              @relation(fields: [eventId], references: [id])
+  eventId       String
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+}
+
+model LoyaltyIntegration {
+  id          String   @id @default(cuid())
+  name        String   // e.g., Salesforce, HubSpot, 247GBS Rewards
+  type        String   // CRM, NATIVE
+  status      String   @default("Disconnected") // Connected, Disconnected, Coming Soon
+  config      Json?    // API keys, settings
+  booth       Booth    @relation(fields: [boothId], references: [id])
+  boothId     String
+  event       Event    @relation(fields: [eventId], references: [id])
+  eventId     String
+  syncLogs    LoyaltySyncLog[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([boothId, eventId, name])
+}
+
+model LoyaltySyncLog {
+  id              String             @id @default(cuid())
+  integration     LoyaltyIntegration @relation(fields: [integrationId], references: [id])
+  integrationId   String
+  syncedProfiles  Int                @default(0)
+  apiStatus       String             @default("Healthy") // Healthy, Degrading, Down
+  lastSync        DateTime           @default(now())
+  createdAt       DateTime           @default(now())
+}
+
+model BlockedIP {
+  id          String   @id @default(cuid())
+  ip          String
+  reason      String?
+  booth       Booth    @relation(fields: [boothId], references: [id])
+  boothId     String
+  createdAt   DateTime @default(now())
+
+  @@unique([ip, boothId])
+}
+
+model Scanner {
+  id          String   @id @default(cuid())
+  name        String
+  deviceId    String   @unique
+  type        String   @default("HANDHELD") // HANDHELD, MOBILE, TABLET
+  status      String   @default("OFFLINE") // ONLINE, OFFLINE, MAINTENANCE
+  battery     String?  // e.g., "84%"
+  lastSeen    DateTime @default(now())
+  
+  booth       Booth    @relation(fields: [boothId], references: [id])
+  boothId     String
+  event       Event    @relation(fields: [eventId], references: [id])
+  eventId     String
+  
+  assignedStaff String? // Name or ID of staff member
+  staff         EventStaff? @relation(fields: [staffId], references: [id])
+  staffId       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model EventStaff {
+  id          String   @id @default(cuid())
+  name        String
+  role        String   // Verification Lead, Guest Relations, etc.
+  zone        String   // Main Hall, VIP Lounge, etc.
+  status      String   @default("ACTIVE") // ACTIVE, BREAK, OFFLINE
+  
+  booth       Booth    @relation(fields: [boothId], references: [id])
+  boothId     String
+  event       Event    @relation(fields: [eventId], references: [id])
+  eventId     String
+  
+  scanners    Scanner[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FinanceTicket {
+  id          String   @id @default(cuid())
+  subject     String
+  description String
+  status      String   @default("OPEN") // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  type        String   @default("GENERAL") // LIMIT_INCREASE, DISPUTE, OTHER
+  
+  booth       Booth    @relation(fields: [boothId], references: [id])
+  boothId     String
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model MessageThread {
+  id        String    @id @default(cuid())
+  booth     Booth     @relation(fields: [boothId], references: [id])
+  boothId   String
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([boothId, userId])
+}
+
+model Message {
+  id        String        @id @default(cuid())
+  thread    MessageThread @relation(fields: [threadId], references: [id])
+  threadId  String
+  sender    User          @relation(fields: [senderId], references: [id])
+  senderId  String
+  content   String
+  read      Boolean       @default(false)
+  createdAt DateTime      @default(now())
+}
+
+model SupportChatSession {
+  id        String               @id @default(cuid())
+  booth     Booth                @relation(fields: [boothId], references: [id])
+  boothId   String
+  subject   String
+  status    String               @default("OPEN") // OPEN, CLOSED
+  messages  SupportChatMessage[]
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+}
+
+model SupportChatMessage {
+  id         String             @id @default(cuid())
+  session    SupportChatSession @relation(fields: [sessionId], references: [id])
+  sessionId  String
+  senderType String             // BUSINESS, SUPPORT
+  content    String
+  createdAt  DateTime           @default(now())
+}
+

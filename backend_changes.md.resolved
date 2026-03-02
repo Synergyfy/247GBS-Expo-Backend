@@ -1,0 +1,49 @@
+# Backend Changes Report
+
+This document detail all backend modifications and additions implemented during this integration session.
+
+## 1. Analytics Module
+
+### [AnalyticsController](file:///c:/Users/user/Desktop/mcom%20works/Vemtap/apps/backend/src/modules/analytics/analytics.controller.ts)
+- **[NEW] Endpoint `GET admin/summary`**: 
+    - Consolidates platform-wide metrics (total businesses, customers, visits).
+    - Returns data for growth trends (12 months), sector distribution, and recent security alerts.
+    - Restricted to the `ADMIN` role.
+- **[DELETE] Endpoint `GET admin/loyalty/stats`**: 
+    - Removed the old mock endpoint in favor of the new consolidated summary.
+
+### [AnalyticsService](file:///c:/Users/user/Desktop/mcom%20works/Vemtap/apps/backend/src/modules/analytics/analytics.service.ts)
+- **[NEW] [getAdminSummary()](file:///C:/Users/user/Desktop/mcom%20works/Vemtap/apps/backend/src/modules/analytics/analytics.service.ts#226-306)**:
+    - **Platform Stats**: Direct count queries on [Business](file:///c:/Users/user/Desktop/mcom%20works/Vemtap/apps/backend/src/modules/businesses/entities/business.entity.ts#29-137), [User](file:///c:/Users/user/Desktop/mcom%20works/Vemtap/apps/VemTap/app/admin/users/page.tsx#8-19) (filtered by CUSTOMER), and [Visit](file:///c:/Users/user/Desktop/mcom%20works/Vemtap/apps/backend/src/modules/visitors/entities/visit.entity.ts#8-49) repositories.
+    - **Growth Trend**: Implemented a TypeORM `QueryBuilder` using `TO_CHAR` for PostgreSQL to aggregate visits by month over the last fiscal year.
+    - **Sector Split**: Aggregation by `business.category` with percentage calculation.
+    - **Security Alerts (Security Pulse)**: 
+    - Implemented real-time tracking of `suspended` businesses.
+    - Dynamically retrieves the 3 most recently suspended accounts with their suspension reasons.
+    - Provides a "Security Alert" if any risks are found, or a "System Clean" status if none.
+    - This data feeds the "Security Pulse" section on both Analytics and Loyalty pages.
+
+---
+
+## 2. Support Module
+
+### [SupportController](file:///c:/Users/user/Desktop/mcom%20works/Vemtap/apps/backend/src/modules/support/support.controller.ts)
+- **[NEW] Endpoint `GET admin/tickets`**: Lists all platform tickets for administrative review.
+- **[NEW] Endpoint `GET admin/tickets/:id`**: Provides full conversation history for any ticket (bypasses user-ownership checks).
+- **[NEW] Endpoint `POST admin/tickets/:id/status`**: Allows admins to update ticket status (Resolve/Close).
+- **[NEW] Endpoint `POST admin/tickets/:id/message`**: Allows agents/admins to reply to any customer ticket.
+
+### [SupportService](file:///c:/Users/user/Desktop/mcom%20works/Vemtap/apps/backend/src/modules/support/support.service.ts)
+- **[NEW] [findAllAdmin()](file:///c:/Users/user/Desktop/mcom%20works/Vemtap/apps/backend/src/modules/support/support.service.ts#71-77)**: Returns all tickets with user relations, ordered by creation date.
+- **[NEW] [findOneAdmin(id)](file:///c:/Users/user/Desktop/mcom%20works/Vemtap/apps/backend/src/modules/support/support.service.ts#78-86)**: Fetches a specific ticket with all messages and participant info.
+- **[NEW] [updateStatus(id, status)](file:///c:/Users/user/Desktop/mcom%20works/Vemtap/apps/backend/src/modules/support/support.service.ts#87-94)**: Direct state management for ticket lifecycles.
+- **[NEW] [addAdminMessage(...)](file:///c:/Users/user/Desktop/mcom%20works/Vemtap/apps/backend/src/modules/support/support.controller.ts#89-92)**: 
+    - Injects an agent response into the ticket thread.
+    - Automatically transitions `Open` tickets to `In Progress` when an agent first replies.
+
+---
+
+## Technical Summary
+- **Database**: PostgreSQL.
+- **ORM**: TypeORM (QueryBuilder utilized for complex aggregations).
+- **Security**: All new admin endpoints are protected by `JwtAuthGuard` and `RolesGuard(UserRole.ADMIN)`.
